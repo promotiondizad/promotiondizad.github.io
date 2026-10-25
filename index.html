@@ -3071,6 +3071,67 @@
     showToast(t("toastCleared"));
   });
 
+  /* ----- Live data from admin panel (store-data.json) + silent visit counter ----- */
+  try {
+    fetch("https://abacus.jasoncameron.dev/hit/promotiondizad-store/visits", { mode: "no-cors" }).catch(function(){});
+  } catch (e) {}
+  try {
+    fetch("store-data.json?ts=" + Date.now(), { cache: "no-store" })
+      .then(function(r){ if (!r.ok) throw new Error("bad"); return r.json(); })
+      .then(function(data){
+        if (!data) return;
+        if (data.settings && data.settings.whatsapp) WHATSAPP_NUMBER = String(data.settings.whatsapp);
+        if (data.products && data.products.length){
+          var byIdMap = {};
+          PRODUCTS.forEach(function(p){ byIdMap[p.id] = p; });
+          var added = [];
+          data.products.forEach(function(np){
+            if (!np || !np.id) return;
+            var ex = byIdMap[np.id];
+            if (np.available === false){
+              if (ex) ex.__pdHide = true;
+              return;
+            }
+            if (ex){
+              if (typeof np.price === "number") ex.price = np.price;
+              if (np.name) ex.name = np.name;
+              if (np.image) ex.image = np.image;
+              if (np.cat) ex.cat = np.cat;
+              if (typeof np.desc === "string" && np.desc) ex.desc = np.desc;
+              if (np.specs && np.specs.length) ex.specs = np.specs;
+            } else if (np.image){
+              added.push({
+                id: np.id,
+                image: np.image,
+                price: (typeof np.price === "number" ? np.price : 0),
+                cat: np.cat || "منزل",
+                name: (np.name && typeof np.name === "object") ? np.name : { ar: String(np.name || np.id), fr: String(np.name || np.id) },
+                desc: np.desc || "",
+                specs: np.specs || []
+              });
+            }
+          });
+          for (var i = PRODUCTS.length - 1; i >= 0; i--){
+            if (PRODUCTS[i].__pdHide) PRODUCTS.splice(i, 1);
+          }
+          added.forEach(function(rec){ PRODUCTS.push(rec); });
+        }
+        applyLang(lang);
+        if (data.settings && data.settings.storeName){
+          var brands = document.querySelectorAll(".brand-name");
+          for (var b = 0; b < brands.length; b++) brands[b].textContent = data.settings.storeName;
+        }
+        if (data.settings && data.settings.announcement){
+          var banner = document.createElement("div");
+          banner.setAttribute("dir", "auto");
+          banner.style.cssText = "background:#c9a24b;color:#14242f;text-align:center;padding:10px 14px;font-weight:700;font-size:15px;line-height:1.7";
+          banner.textContent = data.settings.announcement;
+          document.body.insertBefore(banner, document.body.firstChild);
+        }
+      })
+      .catch(function(){});
+  } catch (e) {}
+
   applyLang("ar");
 })();
 </script>

@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لوحة مدير — Promotion Dizad</title>
+<style>
+  :root{--ink:#14242f;--navy:#0e2233;--gold:#c9a24b;--gold2:#e3c878;--bg:#f4f6f8;--card:#fff;--line:#dde4ea;--ok:#1d7a3a;--err:#b3261e;--mut:#5c6f7e}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:var(--navy);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
+  header h1{font-size:17px;margin:0;font-weight:800}
+  header .sp{flex:1}
+  .wrap{max-width:900px;margin:0 auto;padding:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  label{display:block;font-size:13px;font-weight:700;margin:12px 0 5px;color:var(--ink)}
+  input[type=text],input[type=number],input[type=password],textarea,select{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff;color:var(--ink)}
+  textarea{min-height:80px;resize:vertical}
+  .btn{display:inline-block;border:0;border-radius:10px;padding:12px 18px;font-size:15px;font-weight:800;cursor:pointer;background:var(--gold);color:#14242f}
+  .btn:active{transform:scale(.98)}
+  .btn.dark{background:var(--navy);color:#fff}
+  .btn.ghost{background:#eef2f5;color:var(--ink);border:1px solid var(--line)}
+  .btn.danger{background:#fbe9e7;color:var(--err);border:1px solid #f0c4c0}
+  .btn.small{padding:7px 11px;font-size:13px;border-radius:8px}
+  .publish{width:100%;font-size:17px;padding:15px;margin:4px 0 14px}
+  .msg{border-radius:10px;padding:11px 13px;font-size:14px;line-height:1.8;display:none;margin-bottom:12px}
+  .msg.ok{display:block;background:#e6f4ea;color:var(--ok);border:1px solid #bfe3cb}
+  .msg.err{display:block;background:#fdecea;color:var(--err);border:1px solid #f3c1bd}
+  .msg.info{display:block;background:#eef4fb;color:#17548f;border:1px solid #c6dcf5}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tabs button{flex:1;padding:12px 6px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:800;cursor:pointer;color:var(--mut)}
+  .tabs button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .note{font-size:13px;color:var(--mut);line-height:1.9}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:right;vertical-align:middle}
+  th{color:var(--mut);font-size:12.5px}
+  td img{width:46px;height:46px;object-fit:cover;border-radius:8px;background:#eef2f5}
+  td .emoji{font-size:26px}
+  .priceInp{width:96px;padding:7px}
+  .rowBtns{display:flex;gap:6px;flex-wrap:wrap}
+  .switch{position:relative;width:46px;height:26px;flex:none}
+  .switch input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer}
+  .switch i{position:absolute;inset:0;background:#c8d3db;border-radius:20px;transition:.2s;pointer-events:none}
+  .switch i:after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s}
+  .switch input:checked + i{background:var(--ok)}
+  .switch input:checked + i:after{transform:translateX(-20px)}
+  .lockWrap{max-width:420px;margin:8vh auto 0}
+  .hidden{display:none !important}
+  .statBig{font-size:34px;font-weight:900;color:var(--navy)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:560px){.grid2{grid-template-columns:1fr} th.hidem,td.hidem{display:none}}
+  .modal{position:fixed;inset:0;background:rgba(10,25,35,.55);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;z-index:20}
+  .modal.open{display:flex}
+  .modal .card{width:100%;max-width:560px;margin-top:4vh}
+  .flexrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .flexrow .sp{flex:1}
+</style>
+</head>
+<body>
+
+<!-- ===== Lock screen ===== -->
+<div id="lockScreen" class="wrap lockWrap hidden">
+  <div class="card">
+    <h2 style="margin:0 0 6px;font-size:19px">🔒 لوحة مدير Promotion Dizad</h2>
+    <p class="note" id="lockHint"></p>
+    <div id="setupBox" class="hidden">
+      <label>أنشئ كلمة سرّك (أول مرة)</label>
+      <input type="password" id="pwNew" autocomplete="new-password" placeholder="كلمة سر جديدة">
+      <label>أعد كتابتها</label>
+      <input type="password" id="pwNew2" autocomplete="new-password" placeholder="تأكيد كلمة السر">
+      <button class="btn" style="width:100%;margin-top:14px" id="btnSetup">إنشاء ودخول</button>
+    </div>
+    <div id="loginBox" class="hidden">
+      <label>كلمة السر</label>
+      <input type="password" id="pwLogin" autocomplete="current-password" placeholder="كلمة السر">
+      <button class="btn" style="width:100%;margin-top:14px" id="btnLogin">دخول</button>
+    </div>
+    <p class="msg" id="lockMsg"></p>
+    <p class="note">كلمة السر هذه تحمي فتح اللوحة على هذا الجهاز فقط (تُحفظ مشفّرة كهاش في جهازك). الحماية الحقيقية للنشر هي توكن GitHub الخاص بك — لا تشاركه مع أي شخص.</p>
+  </div>
+</div>
+
+<!-- ===== Panel ===== -->
+<div id="panel" class="hidden">
+  <header>
+    <h1>🛠️ مدير Promotion Dizad</h1>
+    <span class="sp"></span>
+    <button class="btn ghost small" id="btnLockNow">قفل</button>
+  </header>
+  <div class="wrap">
+    <p class="msg" id="mainMsg"></p>
+    <p class="msg info hidden" id="draftMsg"></p>
+
+    <button class="btn publish" id="btnPublish">🚀 نشر التعديلات على المتجر الحي</button>
+
+    <div class="tabs">
+      <button data-tab="settings" class="active">⚙️ الإعدادات</button>
+      <button data-tab="products">📦 المنتجات</button>
+      <button data-tab="stats">📊 الإحصائيات</button>
+    </div>
+
+    <!-- Settings -->
+    <section id="tab-settings">
+      <div class="card">
+        <h3 style="margin-top:0">إعدادات المتجر</h3>
+        <label>اسم المتجر</label>
+        <input type="text" id="setName" dir="auto">
+        <label>رقم واتساب (بصيغة دولية بلا +، مثال: 213791402649)</label>
+        <input type="text" id="setWhatsapp" inputmode="numeric" dir="ltr">
+        <label>نص تحديث / إعلان (يظهر كشريط أعلى المتجر — اتركه فارغاً لإخفائه)</label>
+        <textarea id="setAnnouncement" dir="auto" placeholder="مثال: توصيل متوفر لـ55 ولاية — الدفع عند الاستلام"></textarea>
+        <button class="btn" id="btnSaveSettings" style="margin-top:14px">حفظ الإعدادات (محلياً)</button>
+        <p class="note">الحفظ هنا محلي على جهازك. باش تظهر التغييرات للزبائن اضغط زر «نشر التعديلات» في الأعلى.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">ربط GitHub (للنشر)</h3>
+        <label>Personal Access Token</label>
+        <input type="password" id="ghToken" dir="ltr" placeholder="github_pat_... أو ghp_..." autocomplete="off">
+        <div class="flexrow" style="margin-top:10px">
+          <button class="btn dark small" id="btnSaveToken">حفظ التوكن في هذا الجهاز</button>
+          <button class="btn danger small" id="btnClearToken">حذف التوكن</button>
+        </div>
+        <p class="note">المستودع ثابت: <b dir="ltr">promotiondizad/promotiondizad.github.io</b> (فرع main). التوكن يُحفظ في هذا الجهاز فقط (localStorage) ولا يُرسل لأي جهة غير GitHub عند النشر.</p>
+        <p class="note"><b>كيفاش تنشئ التوكن:</b> من حسابك في GitHub: Settings ← Developer settings ← Personal access tokens ← Fine-grained tokens ← Generate new token، اختر المستودع <b dir="ltr">promotiondizad.github.io</b> فقط، وصلاحية <b>Contents: Read and write</b> فقط، ثم الصقه هنا.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">نسخة احتياطية</h3>
+        <div class="flexrow">
+          <button class="btn ghost" id="btnExport">⬇️ تصدير JSON</button>
+          <button class="btn ghost" id="btnImport">⬆️ استيراد JSON</button>
+          <input type="file" id="fileImport" accept=".json,application/json" class="hidden">
+        </div>
+        <p class="note">التصدير ينزّل ملف store-data.json الحالي (بالتعديلات المحلية). الاستيراد يستبدل البيانات المحلية بملف تختاره — يلزم النشر بعدها.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">كلمة سر اللوحة</h3>
+        <label>كلمة سر جديدة</label>
+        <input type="password" id="pwChange" autocomplete="new-password">
+        <button class="btn ghost" id="btnChangePw" style="margin-top:10px">تغيير كلمة السر</button>
+      </div>
+    </section>
+
+    <!-- Products -->
+    <section id="tab-products" class="hidden">
+      <div class="card">
+        <div class="flexrow">
+          <h3 style="margin:0">المنتجات (<span id="prodCount">0</span>)</h3>
+          <span class="sp"></span>
+          <button class="btn small" id="btnAdd">➕ إضافة منتج</button>
+        </div>
+        <label>بحث بالاسم</label>
+        <input type="text" id="prodSearch" dir="auto" placeholder="اكتب اسم منتج...">
+        <div style="overflow-x:auto;margin-top:8px">
+          <table>
+            <thead><tr>
+              <th>الصورة</th><th>الاسم</th><th class="hidem">الفئة</th><th>السعر (دج)</th><th>متوفر</th><th>إجراءات</th>
+            </tr></thead>
+            <tbody id="prodBody"></tbody>
+          </table>
+        </div>
+        <p class="note">أي تعديل هنا محلي حتى تضغط «نشر التعديلات» في الأعلى. إطفاء «متوفر» يخفي المنتج من المتجر ويبقيه في اللوحة.</p>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section id="tab-stats" class="hidden">
+      <div class="card">
+        <h3 style="margin-top:0">إحصائيات الزيارات</h3>
+        <div class="grid2">
+          <div><div class="note">إجمالي زيارات المتجر</div><div class="statBig" id="statVisits">…</div></div>
+          <div><div class="note">عدد المنتجات</div><div class="statBig" id="statProducts">–</div></div>
+        </div>
+        <button class="btn ghost small" id="btnRefreshStats" style="margin-top:10px">تحديث الرقم</button>
+        <p class="note">عدّ الزيارات بدأ من <b>25 أكتوبر 2026</b> (نهار تركّب العدّاد في المتجر) — الزيارات قبل هذا التاريخ غير مسجلة ولا يمكن استرجاعها. كل فتح لصفحة المتجر يزيد العدّاد بزيارة واحدة، بلا أي تتبّع شخصي للزوار.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ===== Product edit modal ===== -->
+<div class="modal" id="editModal">
+  <div class="card">
+    <h3 style="margin-top:0" id="editTitle">تحرير منتج</h3>
+    <input type="hidden" id="fId">
+    <label>الاسم (عربي)</label>
+    <input type="text" id="fNameAr" dir="auto">
+    <label>الاسم (فرنسي / كما يظهر عند تبديل اللغة)</label>
+    <input type="text" id="fNameFr" dir="auto">
+    <div class="grid2">
+      <div><label>السعر (دج)</label><input type="number" id="fPrice" min="0" step="1" dir="ltr"></div>
+      <div><label>الفئة</label><input type="text" id="fCat" dir="auto" list="catList"><datalist id="catList"></datalist></div>
+    </div>
+    <label>رابط الصورة (https://...)</label>
+    <input type="text" id="fImage" dir="ltr" placeholder="https://...">
+    <label>الوصف</label>
+    <textarea id="fDesc" dir="auto"></textarea>
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" id="fAvailable" style="width:20px;height:20px"> متوفر في المتجر</label>
+    <div class="flexrow" style="margin-top:14px">
+      <button class="btn" id="btnSaveProduct">حفظ</button>
+      <button class="btn ghost" id="btnCancelEdit">إلغاء</button>
+    </div>
+    <p class="note">للباكات (منتجات بلا صورة بأيقونة) اترك رابط الصورة فارغاً — وصف الباك ومحتوياته الأصلية لا تُمسّ من هنا، يُعدّل الاسم والسعر والفئة والتوفر فقط.</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+var REPO = "promotiondizad/promotiondizad.github.io";
+var BRANCH = "main";
+var DATA_FILE = "store-data.json";
+var ABACUS_GET = "https://abacus.jasoncameron.dev/get/promotiondizad-store/visits";
+var state = null;        // {settings:{...}, products:[...]}
+var dirty = false;
+
+/* ---------- helpers ---------- */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function pname(p){ if(!p || !p.name) return (p && p.id) || ""; return (typeof p.name === "object") ? (p.name.ar || p.name.fr || "") : String(p.name); }
+function pnameFr(p){ if(!p || !p.name) return ""; return (typeof p.name === "object") ? (p.name.fr || "") : ""; }
+function showMsg(kind, text){ var m = $("mainMsg"); m.className = "msg " + kind; m.textContent = text; window.scrollTo({top:0, behavior:"smooth"}); }
+function markDirty(){ dirty = true; try{ localStorage.setItem("pd_draft", JSON.stringify(state)); }catch(e){} }
+
+/* ---------- SHA-256 ---------- */
+function sha256Hex(text){
+  var buf = new TextEncoder().encode(text);
+  return crypto.subtle.digest("SHA-256", buf).then(function(h){
+    return Array.prototype.map.call(new Uint8Array(h), function(b){ return ("0"+b.toString(16)).slice(-2); }).join("");
+  });
+}
+
+/* ---------- lock ---------- */
+function initLock(){
+  var has = !!localStorage.getItem("pd_pw_hash");
+  $("lockScreen").classList.remove("hidden");
+  $("setupBox").classList.toggle("hidden", has);
+  $("loginBox").classList.toggle("hidden", !has);
+  $("lockHint").textContent = has ? "أدخل كلمة سرّك لفتح اللوحة." : "أول مرة: أنشئ كلمة سر لفتح اللوحة على هذا الجهاز.";
+  if (sessionStorage.getItem("pd_unlocked") === "1" && has) unlock();
+}
+function unlock(){
+  $("lockScreen").classList.add("hidden");
+  $("panel").classList.remove("hidden");
+  loadData();
+}
+function lockMsg(kind, text){ var m = $("lockMsg"); m.className = "msg " + kind; m.textContent = text; }
+$("btnSetup").addEventListener("click", function(){
+  var a = $("pwNew").value, b = $("pwNew2").value;
+  if (a.length < 4) return lockMsg("err", "كلمة السر قصيرة — 4 أحرف على الأقل.");
+  if (a !== b) return lockMsg("err", "كلمتا السر غير متطابقتين.");
+  sha256Hex(a).then(function(h){
+    localStorage.setItem("pd_pw_hash", h);
+    sessionStorage.setItem("pd_unlocked", "1");
+    unlock();
+  });
+});
+$("btnLogin").addEventListener("click", function(){
+  sha256Hex($("pwLogin").value).then(function(h){
+    if (h === localStorage.getItem("pd_pw_hash")){
+      sessionStorage.setItem("pd_unlocked", "1");
+      unlock();
+    } else lockMsg("err", "كلمة السر غير صحيحة.");
+  });
+});
+$("pwLogin").addEventListener("keydown", function(e){ if (e.key === "Enter") $("btnLogin").click(); });
+$("btnLockNow").addEventListener("click", function(){ sessionStorage.removeItem("pd_unlocked"); location.reload(); });
+$("btnChangePw").addEventListener("click", function(){
+  var v = $("pwChange").value;
+  if (v.length < 4) return showMsg("err", "كلمة السر الجديدة قصيرة — 4 أحرف على الأقل.");
+  sha256Hex(v).then(function(h){ localStorage.setItem("pd_pw_hash", h); $("pwChange").value = ""; showMsg("ok", "تم تغيير كلمة سر اللوحة."); });
+});
+
+/* ---------- data load ---------- */
+function loadData(){
+  var draft = null;
+  try{ draft = JSON.parse(localStorage.getItem("pd_draft") || "null"); }catch(e){}
+  fetch("store-data.json?ts=" + Date.now(), { cache: "no-store" })
+    .then(function(r){ if (!r.ok) throw new Error("http"); return r.json(); })
+    .then(function(data){
+      state = data;
+      afterLoad();
+      if (draft && JSON.stringify(draft) !== JSON.stringify(data)){
+        var dm = $("draftMsg");
+        dm.classList.remove("hidden");
+        dm.innerHTML = "عندك تعديلات محلية غير منشورة محفوظة في هذا الجهاز. " +
+          "<button class='btn ghost small' id='btnUseDraft'>استرجاعها</button> " +
+          "<button class='btn ghost small' id='btnDropDraft'>تجاهلها</button>";
+        $("btnUseDraft").addEventListener("click", function(){ state = draft; dirty = true; dm.classList.add("hidden"); afterLoad(); showMsg("info", "تم استرجاع التعديلات المحلية — اضغط نشر لتطبيقها على المتجر."); });
+        $("btnDropDraft").addEventListener("click", function(){ localStorage.removeItem("pd_draft"); dm.classList.add("hidden"); });
+      }
+    })
+    .catch(function(){
+      if (draft){ state = draft; afterLoad(); showMsg("info", "تعذّر جلب البيانات الحيّة — تم فتح النسخة المحلية المحفوظة."); }
+      else showMsg("err", "تعذّر جلب store-data.json الحي. تحقق من الاتصال وأعد فتح اللوحة.");
+    });
+  var tk = localStorage.getItem("pd_gh_token");
+  if (tk) $("ghToken").value = tk;
+}
+function afterLoad(){
+  if (!state.settings) state.settings = { storeName: "Promotion Dizad", whatsapp: "", announcement: "" };
+  if (!state.products) state.products = [];
+  $("setName").value = state.settings.storeName || "";
+  $("setWhatsapp").value = state.settings.whatsapp || "";
+  $("setAnnouncement").value = state.settings.announcement || "";
+  renderProductsTable();
+  updateStats(false);
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll(".tabs button").forEach(function(b){
+  b.addEventListener("click", function(){
+    document.querySelectorAll(".tabs button").forEach(function(x){ x.classList.remove("active"); });
+    b.classList.add("active");
+    ["settings","products","stats"].forEach(function(t){ $("tab-" + t).classList.toggle("hidden", t !== b.getAttribute("data-tab")); });
+    if (b.getAttribute("data-tab") === "stats") updateStats(true);
+  });
+});
+
+/* ---------- settings ---------- */
+$("btnSaveSettings").addEventListener("click", function(){
+  state.settings.storeName = $("setName").value.trim();
+  state.settings.whatsapp = $("setWhatsapp").value.replace(/[^\d]/g, "");
+  state.settings.announcement = $("setAnnouncement").value.trim();
+  markDirty();
+  showMsg("ok", "تم حفظ الإعدادات محلياً. اضغط «نشر التعديلات» لتظهر في المتجر الحي.");
+});
+
+/* ---------- products table ---------- */
+function cats(){
+  var s = {};
+  state.products.forEach(function(p){ if (p.cat) s[p.cat] = 1; });
+  return Object.keys(s);
+}
+function renderProductsTable(){
+  var q = ($("prodSearch").value || "").toLowerCase();
+  $("prodCount").textContent = state.products.length;
+  $("catList").innerHTML = cats().map(function(c){ return "<option value=\"" + esc(c) + "\">"; }).join("");
+  var html = "";
+  state.products.forEach(function(p, idx){
+    if (q && pname(p).toLowerCase().indexOf(q) === -1 && (p.name && p.name.fr || "").toLowerCase().indexOf(q) === -1) return;
+    var avail = p.available !== false;
+    var media = p.image ? "<img src=\"" + esc(p.image) + "\" alt=\"\" loading=\"lazy\">" : "<span class=\"emoji\">" + esc(p.emoji || "📦") + "</span>";
+    html += "<tr>" +
+      "<td>" + media + "</td>" +
+      "<td dir=\"auto\">" + esc(pname(p)) + "</td>" +
+      "<td class=\"hidem\" dir=\"auto\">" + esc(p.cat || "باكات") + "</td>" +
+      "<td><input type=\"number\" class=\"priceInp\" dir=\"ltr\" min=\"0\" step=\"1\" value=\"" + (p.price || 0) + "\" data-price=\"" + idx + "\"></td>" +
+      "<td><label class=\"switch\"><input type=\"checkbox\" data-avail=\"" + idx + "\"" + (avail ? " checked" : "") + "><i></i></label></td>" +
+      "<td><div class=\"rowBtns\">" +
+        "<button class=\"btn ghost small\" data-edit=\"" + idx + "\">تحرير</button>" +
+        "<button class=\"btn danger small\" data-del=\"" + idx + "\">حذف</button>" +
+      "</div></td></tr>";
+  });
+  $("prodBody").innerHTML = html || "<tr><td colspan=\"6\" class=\"note\">لا نتائج.</td></tr>";
+}
+$("prodSearch").addEventListener("input", renderProductsTable);
+$("prodBody").addEventListener("change", function(e){
+  var t = e.target;
+  if (t.hasAttribute("data-price")){
+    var p = state.products[Number(t.getAttribute("data-price"))];
+    p.price = Math.max(0, parseInt(t.value, 10) || 0);
+    markDirty();
+  }
+  if (t.hasAttribute("data-avail")){
+    state.products[Number(t.getAttribute("data-avail"))].available = t.checked;
+    markDirty();
+  }
+});
+$("prodBody").addEventListener("click", function(e){
+  var t = e.target;
+  if (t.hasAttribute("data-edit")) openEdit(Number(t.getAttribute("data-edit")));
+  if (t.hasAttribute("data-del")){
+    var idx = Number(t.getAttribute("data-del"));
+    var p = state.products[idx];
+    if (confirm("حذف «" + pname(p) + "» نهائياً من البيانات؟ (يصبح فعلياً بعد النشر)")){
+      state.products.splice(idx, 1);
+      markDirty();
+      renderProductsTable();
+      showMsg("info", "تم حذف المنتج محلياً — اضغط نشر لتطبيق الحذف على المتجر.");
+    }
+  }
+});
+
+/* ---------- edit / add ---------- */
+var editingIdx = -1;
+function openEdit(idx){
+  editingIdx = idx;
+  var p = state.products[idx] || {};
+  $("editTitle").textContent = idx >= 0 ? "تحرير منتج" : "إضافة منتج";
+  $("fId").value = p.id || "";
+  $("fNameAr").value = pname(p);
+  $("fNameFr").value = pnameFr(p);
+  $("fPrice").value = p.price || 0;
+  $("fCat").value = p.cat || "";
+  $("fImage").value = p.image || "";
+  $("fDesc").value = p.desc || "";
+  $("fAvailable").checked = p.available !== false;
+  $("editModal").classList.add("open");
+}
+$("btnAdd").addEventListener("click", function(){ openEdit(-1); });
+$("btnCancelEdit").addEventListener("click", function(){ $("editModal").classList.remove("open"); });
+$("btnSaveProduct").addEventListener("click", function(){
+  var nameAr = $("fNameAr").value.trim();
+  if (!nameAr) return alert("اسم المنتج إجباري.");
+  var rec;
+  if (editingIdx >= 0){ rec = state.products[editingIdx]; }
+  else {
+    rec = { id: "pd-" + Date.now(), specs: [] };
+    state.products.push(rec);
+  }
+  var nameFr = $("fNameFr").value.trim();
+  rec.name = { ar: nameAr, fr: nameFr || nameAr };
+  rec.price = Math.max(0, parseInt($("fPrice").value, 10) || 0);
+  var cat = $("fCat").value.trim();
+  if (cat) rec.cat = cat;
+  var img = $("fImage").value.trim();
+  if (img) rec.image = img;
+  var desc = $("fDesc").value;
+  if (desc.trim() || typeof rec.desc === "string") rec.desc = desc;
+  rec.available = $("fAvailable").checked;
+  markDirty();
+  $("editModal").classList.remove("open");
+  renderProductsTable();
+  showMsg("ok", "تم حفظ المنتج محلياً — اضغط «نشر التعديلات» في الأعلى ليظهر في المتجر.");
+});
+
+/* ---------- stats ---------- */
+function updateStats(fetchLive){
+  $("statProducts").textContent = state ? state.products.length : "–";
+  if (!fetchLive) return;
+  $("statVisits").textContent = "…";
+  fetch(ABACUS_GET).then(function(r){ return r.json(); })
+    .then(function(j){ $("statVisits").textContent = (typeof j.value === "number") ? j.value.toLocaleString("fr") : "غير متاح"; })
+    .catch(function(){ $("statVisits").textContent = "غير متاح"; });
+}
+$("btnRefreshStats").addEventListener("click", function(){ updateStats(true); });
+
+/* ---------- GitHub token + publish ---------- */
+$("btnSaveToken").addEventListener("click", function(){
+  var v = $("ghToken").value.trim();
+  if (!v) return showMsg("err", "الصق التوكن أولاً.");
+  localStorage.setItem("pd_gh_token", v);
+  showMsg("ok", "تم حفظ التوكن في هذا الجهاز.");
+});
+$("btnClearToken").addEventListener("click", function(){
+  localStorage.removeItem("pd_gh_token");
+  $("ghToken").value = "";
+  showMsg("info", "تم حذف التوكن من هذا الجهاز.");
+});
+function b64Utf8(str){
+  var bytes = new TextEncoder().encode(str);
+  var bin = "";
+  var CH = 0x8000;
+  for (var i = 0; i < bytes.length; i += CH){
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  }
+  return btoa(bin);
+}
+$("btnPublish").addEventListener("click", function(){
+  var token = ($("ghToken").value || localStorage.getItem("pd_gh_token") || "").trim();
+  if (!token) return showMsg("err", "لا يوجد توكن GitHub — الصقه في تبويب الإعدادات واحفظه أولاً.");
+  if (!state) return showMsg("err", "البيانات لم تُحمّل بعد.");
+  var btn = $("btnPublish");
+  btn.disabled = true; btn.textContent = "⏳ جارٍ النشر...";
+  var api = "https://api.github.com/repos/" + REPO + "/contents/" + DATA_FILE;
+  var headers = { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" };
+  fetch(api + "?ref=" + BRANCH, { headers: headers })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .catch(function(){ return null; })
+    .then(function(cur){
+      var body = {
+        message: "تحديث بيانات المتجر من لوحة المدير",
+        content: b64Utf8(JSON.stringify(state, null, 1)),
+        branch: BRANCH
+      };
+      if (cur && cur.sha) body.sha = cur.sha;
+      return fetch(api, { method: "PUT", headers: Object.assign({ "Content-Type": "application/json" }, headers), body: JSON.stringify(body) });
+    })
+    .then(function(r){
+      if (r.ok){
+        dirty = false;
+        localStorage.removeItem("pd_draft");
+        showMsg("ok", "✅ تم النشر بنجاح! المتجر الحي يتحدث خلال دقيقة تقريباً. أي تغيير في الأسعار/المنتجات/الإعلان سيظهر للزبائن بعدها.");
+      } else {
+        return r.json().catch(function(){ return {}; }).then(function(j){
+          showMsg("err", "❌ فشل النشر من GitHub (رمز " + r.status + ")" + (j.message ? ": " + j.message : "") + " — تحقق أن التوكن صحيح وله صلاحية Contents على هذا المستودع.");
+        });
+      }
+    })
+    .catch(function(){ showMsg("err", "❌ فشل النشر — مشكلة اتصال. أعد المحاولة."); })
+    .finally(function(){ btn.disabled = false; btn.textContent = "🚀 نشر التعديلات على المتجر الحي"; });
+});
+
+/* ---------- export / import ---------- */
+$("btnExport").addEventListener("click", function(){
+  var blob = new Blob([JSON.stringify(state, null, 1)], { type: "application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "store-data.json";
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+});
+$("btnImport").addEventListener("click", function(){ $("fileImport").click(); });
+$("fileImport").addEventListener("change", function(){
+  var f = this.files[0];
+  if (!f) return;
+  f.text().then(function(txt){
+    try {
+      var data = JSON.parse(txt);
+      if (!data.products || !data.settings) throw new Error("shape");
+      state = data;
+      markDirty();
+      afterLoad();
+      showMsg("ok", "تم استيراد الملف محلياً — اضغط نشر لتطبيقه على المتجر.");
+    } catch(e){ showMsg("err", "الملف غير صالح — يلزم ملف store-data.json ببنية صحيحة."); }
+    this.value = "";
+  }.bind(this));
+});
+
+initLock();
+</script>
+</body>
+</html>
