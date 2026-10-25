@@ -330,6 +330,30 @@
     width:100%;aspect-ratio:16/10;max-height:420px;object-fit:cover;display:block;
     background:var(--surface-2);border-bottom:3px solid var(--gold);
   }
+  .pmodal-gallery{position:relative}
+  .pmodal-gallery .pmodal-img{border-bottom:0}
+  .gal-arrow{
+    position:absolute;top:50%;transform:translateY(-50%);z-index:2;
+    width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;
+    background:rgba(8,20,30,.55);color:#fff;font-size:24px;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .gal-prev{inset-inline-start:10px}
+  .gal-next{inset-inline-end:10px}
+  .gal-count{
+    position:absolute;bottom:10px;inset-inline-end:12px;z-index:2;
+    background:rgba(8,20,30,.55);color:#fff;font-size:12.5px;font-weight:700;
+    padding:3px 9px;border-radius:20px;
+  }
+  .pmodal-thumbs{
+    display:flex;gap:8px;padding:10px 14px 2px;flex-wrap:wrap;
+    border-bottom:3px solid var(--gold);background:var(--surface);
+  }
+  .pmodal-thumb{
+    width:58px;height:58px;object-fit:cover;border-radius:9px;cursor:pointer;
+    border:2px solid transparent;opacity:.7;padding:0;background:var(--surface-2);
+  }
+  .pmodal-thumb.active{border-color:var(--gold);opacity:1}
   .pmodal-body{padding:20px 20px 24px}
   .pmodal-body .tagline{color:var(--ink-2);font-size:13.5px;margin:0 0 6px}
   .card-media .card-img{cursor:pointer}
@@ -2832,10 +2856,33 @@
   var pmodal = document.getElementById("pmodal");
   var pmodalContent = document.getElementById("pmodalContent");
   var currentDetail = null;
+  function productImages(p){
+    if (p && p.images && p.images.length){
+      var clean = p.images.filter(function(s){ return typeof s === "string" && s; }).slice(0, 6);
+      if (clean.length) return clean;
+    }
+    return (p && p.image) ? [p.image] : [];
+  }
   function openProduct(id){
     var p = byId(id);
     if (!p || !p.image) return;
     currentDetail = id;
+    var imgs = productImages(p);
+    var galleryHtml;
+    if (imgs.length > 1){
+      galleryHtml =
+        '<div class="pmodal-gallery">' +
+          '<img class="pmodal-img" id="pmMainImg" src="' + imgs[0] + '" alt="' + esc(p.name[lang]) + '" />' +
+          '<button class="gal-arrow gal-prev" id="pmPrev" type="button" aria-label="الصورة السابقة">‹</button>' +
+          '<button class="gal-arrow gal-next" id="pmNext" type="button" aria-label="الصورة التالية">›</button>' +
+          '<span class="gal-count" id="pmCount">1/' + imgs.length + '</span>' +
+        '</div>' +
+        '<div class="pmodal-thumbs">' +
+          imgs.map(function(s, i){ return '<img class="pmodal-thumb' + (i === 0 ? " active" : "") + '" data-pmthumb="' + i + '" src="' + s + '" alt="" loading="lazy" />'; }).join("") +
+        '</div>';
+    } else {
+      galleryHtml = '<img class="pmodal-img" src="' + p.image + '" alt="' + esc(p.name[lang]) + '" />';
+    }
     var specsHtml = (p.specs && p.specs.length)
       ? '<h4 class="specs-title">' + t("specsTitle") + '</h4><table class="specs-table"><tbody>' + specsRowsHTML(p) + '</tbody></table>'
       : "";
@@ -2846,7 +2893,7 @@
         "</div>";
     }
     pmodalContent.innerHTML =
-      '<img class="pmodal-img" src="' + p.image + '" alt="' + esc(p.name[lang]) + '" />' +
+      galleryHtml +
       '<div class="pmodal-body">' +
         '<h3 class="pmodal-name" id="pmName">' + esc(p.name[lang]) + '</h3>' +
         '<p class="tagline">' + esc(catLabel(productCat(p))) + '</p>' +
@@ -2865,6 +2912,23 @@
     document.body.style.overflow = "hidden";
     var panel = pmodal.querySelector(".pmodal-panel");
     if (panel) panel.scrollTop = 0;
+    if (imgs.length > 1){
+      var pmIdx = 0;
+      var pmMain = document.getElementById("pmMainImg");
+      var pmCount = document.getElementById("pmCount");
+      var pmThumbs = pmodalContent.querySelectorAll("[data-pmthumb]");
+      var pmShow = function(i){
+        pmIdx = ((i % imgs.length) + imgs.length) % imgs.length;
+        if (pmMain) pmMain.src = imgs[pmIdx];
+        if (pmCount) pmCount.textContent = (pmIdx + 1) + "/" + imgs.length;
+        pmThumbs.forEach(function(th, j){ th.classList.toggle("active", j === pmIdx); });
+      };
+      document.getElementById("pmPrev").addEventListener("click", function(){ pmShow(pmIdx - 1); });
+      document.getElementById("pmNext").addEventListener("click", function(){ pmShow(pmIdx + 1); });
+      pmThumbs.forEach(function(th){
+        th.addEventListener("click", function(){ pmShow(Number(th.getAttribute("data-pmthumb"))); });
+      });
+    }
   }
   function closeProduct(){
     if (!pmodal || !pmodal.classList.contains("open")) return;
@@ -3100,17 +3164,25 @@
               if (ex) ex.__pdHide = true;
               return;
             }
+            var npImgs = (np.images && np.images.length)
+              ? np.images.filter(function(s){ return typeof s === "string" && s; }).slice(0, 6)
+              : (np.image ? [np.image] : []);
             if (ex){
               if (typeof np.price === "number") ex.price = np.price;
               if (np.name) ex.name = np.name;
-              if (np.image) ex.image = np.image;
+              if (npImgs.length){
+                ex.images = npImgs;
+                /* Packs (with contents) keep their icon/contents card — only catalog products take the photo. */
+                if (!ex.contents) ex.image = npImgs[0];
+              }
               if (np.cat) ex.cat = np.cat;
               if (typeof np.desc === "string" && np.desc) ex.desc = np.desc;
               if (np.specs && np.specs.length) ex.specs = np.specs;
-            } else if (np.image){
+            } else if (npImgs.length){
               added.push({
                 id: np.id,
-                image: np.image,
+                image: npImgs[0],
+                images: npImgs,
                 price: (typeof np.price === "number" ? np.price : 0),
                 cat: np.cat || "منزل",
                 name: (np.name && typeof np.name === "object") ? np.name : { ar: String(np.name || np.id), fr: String(np.name || np.id) },

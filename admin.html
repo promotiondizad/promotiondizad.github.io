@@ -54,6 +54,17 @@
   .modal .card{width:100%;max-width:560px;margin-top:4vh}
   .flexrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .flexrow .sp{flex:1}
+  .imgthumbs{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+  .imgthumb{position:relative;width:86px}
+  .imgthumb img{width:86px;height:86px;object-fit:cover;border-radius:10px;border:2px solid var(--line);display:block;background:#eef2f5}
+  .imgthumb.main img{border-color:var(--gold)}
+  .imgthumb .tag{position:absolute;bottom:4px;inset-inline-start:4px;background:var(--navy);color:#fff;font-size:10.5px;padding:2px 6px;border-radius:6px}
+  .imgthumb .ibtns{position:absolute;top:4px;inset-inline-end:4px;display:flex;gap:4px}
+  .imgthumb .ibtns button{border:0;border-radius:6px;width:24px;height:24px;font-size:13px;cursor:pointer;background:rgba(255,255,255,.92);box-shadow:0 1px 3px rgba(0,0,0,.25);padding:0;line-height:1}
+  .imgmsg{border-radius:10px;padding:9px 12px;font-size:13.5px;line-height:1.8;display:none;margin-top:10px}
+  .imgmsg.ok{display:block;background:#e6f4ea;color:var(--ok);border:1px solid #bfe3cb}
+  .imgmsg.err{display:block;background:#fdecea;color:var(--err);border:1px solid #f3c1bd}
+  .imgmsg.info{display:block;background:#eef4fb;color:#17548f;border:1px solid #c6dcf5}
 </style>
 </head>
 <body>
@@ -193,8 +204,20 @@
       <div><label>السعر (دج)</label><input type="number" id="fPrice" min="0" step="1" dir="ltr"></div>
       <div><label>الفئة</label><input type="text" id="fCat" dir="auto" list="catList"><datalist id="catList"></datalist></div>
     </div>
-    <label>رابط الصورة (https://...)</label>
-    <input type="text" id="fImage" dir="ltr" placeholder="https://...">
+    <label>صور المنتج (حتى 6 صور)</label>
+    <div class="flexrow">
+      <button type="button" class="btn dark small" id="btnPickImages">📷 اختر صور من الجهاز</button>
+      <span class="note" id="imgCount">0/6</span>
+      <input type="file" id="fileImages" accept="image/*" multiple class="hidden">
+    </div>
+    <div class="imgthumbs" id="imgThumbs"></div>
+    <p class="imgmsg" id="imgMsg"></p>
+    <label>أو الصق رابطاً (اختياري)</label>
+    <div class="flexrow">
+      <input type="text" id="fImageUrl" dir="ltr" placeholder="https://..." style="flex:1;min-width:180px">
+      <button type="button" class="btn ghost small" id="btnAddUrl">إضافة الرابط</button>
+    </div>
+    <p class="note">الصور المختارة من الجهاز تُضغط وتُرفع فوراً إلى متجرك عند اختيارها (يلزم توكن GitHub مربوطاً في تبويب الإعدادات). الصورة الأولى هي الرئيسية — زر ⭐ يجعل أي صورة رئيسية، وزر ✕ يحذفها من قائمة المنتج.</p>
     <label>الوصف</label>
     <textarea id="fDesc" dir="auto"></textarea>
     <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" id="fAvailable" style="width:20px;height:20px"> متوفر في المتجر</label>
@@ -202,7 +225,7 @@
       <button class="btn" id="btnSaveProduct">حفظ</button>
       <button class="btn ghost" id="btnCancelEdit">إلغاء</button>
     </div>
-    <p class="note">للباكات (منتجات بلا صورة بأيقونة) اترك رابط الصورة فارغاً — وصف الباك ومحتوياته الأصلية لا تُمسّ من هنا، يُعدّل الاسم والسعر والفئة والتوفر فقط.</p>
+    <p class="note">للباكات (منتجات بأيقونة بلا صورة) يمكنك إضافة صور أيضاً، لكن عرض الباك في المتجر يبقى بأيقونته ومحتوياته كما هو — وصف الباك ومحتوياته الأصلية لا تُمسّ من هنا، يُعدّل الاسم والسعر والفئة والتوفر فقط.</p>
   </div>
 </div>
 
@@ -341,7 +364,8 @@ function renderProductsTable(){
   state.products.forEach(function(p, idx){
     if (q && pname(p).toLowerCase().indexOf(q) === -1 && (p.name && p.name.fr || "").toLowerCase().indexOf(q) === -1) return;
     var avail = p.available !== false;
-    var media = p.image ? "<img src=\"" + esc(p.image) + "\" alt=\"\" loading=\"lazy\">" : "<span class=\"emoji\">" + esc(p.emoji || "📦") + "</span>";
+    var mainImg = (p.images && p.images.length) ? p.images[0] : p.image;
+    var media = mainImg ? "<img src=\"" + esc(mainImg) + "\" alt=\"\" loading=\"lazy\">" : "<span class=\"emoji\">" + esc(p.emoji || "📦") + "</span>";
     html += "<tr>" +
       "<td>" + media + "</td>" +
       "<td dir=\"auto\">" + esc(pname(p)) + "</td>" +
@@ -385,8 +409,15 @@ $("prodBody").addEventListener("click", function(e){
 
 /* ---------- edit / add ---------- */
 var editingIdx = -1;
+var editingNewId = "";
+var editImages = [];
+function currentProductId(){
+  if (editingIdx >= 0 && state.products[editingIdx]) return state.products[editingIdx].id;
+  return editingNewId;
+}
 function openEdit(idx){
   editingIdx = idx;
+  editingNewId = "pd-" + Date.now();
   var p = state.products[idx] || {};
   $("editTitle").textContent = idx >= 0 ? "تحرير منتج" : "إضافة منتج";
   $("fId").value = p.id || "";
@@ -394,7 +425,10 @@ function openEdit(idx){
   $("fNameFr").value = pnameFr(p);
   $("fPrice").value = p.price || 0;
   $("fCat").value = p.cat || "";
-  $("fImage").value = p.image || "";
+  $("fImageUrl").value = "";
+  imgMsg("", "");
+  editImages = (p.images && p.images.length) ? p.images.slice(0, 6) : (p.image ? [p.image] : []);
+  renderImgThumbs();
   $("fDesc").value = p.desc || "";
   $("fAvailable").checked = p.available !== false;
   $("editModal").classList.add("open");
@@ -407,7 +441,7 @@ $("btnSaveProduct").addEventListener("click", function(){
   var rec;
   if (editingIdx >= 0){ rec = state.products[editingIdx]; }
   else {
-    rec = { id: "pd-" + Date.now(), specs: [] };
+    rec = { id: editingNewId || ("pd-" + Date.now()), specs: [] };
     state.products.push(rec);
   }
   var nameFr = $("fNameFr").value.trim();
@@ -415,8 +449,9 @@ $("btnSaveProduct").addEventListener("click", function(){
   rec.price = Math.max(0, parseInt($("fPrice").value, 10) || 0);
   var cat = $("fCat").value.trim();
   if (cat) rec.cat = cat;
-  var img = $("fImage").value.trim();
-  if (img) rec.image = img;
+  rec.images = editImages.slice(0, 6);
+  if (rec.images.length) rec.image = rec.images[0];
+  else delete rec.image;
   var desc = $("fDesc").value;
   if (desc.trim() || typeof rec.desc === "string") rec.desc = desc;
   rec.available = $("fAvailable").checked;
@@ -424,6 +459,147 @@ $("btnSaveProduct").addEventListener("click", function(){
   $("editModal").classList.remove("open");
   renderProductsTable();
   showMsg("ok", "تم حفظ المنتج محلياً — اضغط «نشر التعديلات» في الأعلى ليظهر في المتجر.");
+});
+
+/* ---------- product images (upload up to 6) ---------- */
+var MAX_IMAGES = 6;
+function imgMsg(kind, text){
+  var m = $("imgMsg");
+  m.className = "imgmsg" + (kind ? " " + kind : "");
+  m.textContent = text || "";
+}
+function renderImgThumbs(){
+  $("imgCount").textContent = editImages.length + "/" + MAX_IMAGES;
+  $("btnPickImages").disabled = editImages.length >= MAX_IMAGES;
+  $("btnPickImages").style.opacity = editImages.length >= MAX_IMAGES ? ".55" : "";
+  var html = "";
+  editImages.forEach(function(src, i){
+    html += "<div class=\"imgthumb" + (i === 0 ? " main" : "") + "\">" +
+      "<img src=\"" + esc(src) + "\" alt=\"\">" +
+      "<span class=\"ibtns\">" +
+        (i === 0 ? "" : "<button type=\"button\" data-imgmain=\"" + i + "\" title=\"اجعلها الرئيسية\">⭐</button>") +
+        "<button type=\"button\" data-imgdel=\"" + i + "\" title=\"حذف من القائمة\">✕</button>" +
+      "</span>" +
+      (i === 0 ? "<span class=\"tag\">الرئيسية</span>" : "") +
+    "</div>";
+  });
+  $("imgThumbs").innerHTML = html;
+}
+$("imgThumbs").addEventListener("click", function(e){
+  var t = e.target;
+  if (t.hasAttribute("data-imgdel")){
+    editImages.splice(Number(t.getAttribute("data-imgdel")), 1);
+    renderImgThumbs();
+    imgMsg("info", "تم حذف الصورة من قائمة المنتج (ملفها يبقى في المستودع). اضغط «حفظ» ثم «نشر» لتطبيق التغيير.");
+  }
+  if (t.hasAttribute("data-imgmain")){
+    var i = Number(t.getAttribute("data-imgmain"));
+    var mv = editImages.splice(i, 1)[0];
+    editImages.unshift(mv);
+    renderImgThumbs();
+  }
+});
+function ghTokenValue(){
+  var inp = $("ghToken");
+  return ((inp && inp.value) || localStorage.getItem("pd_gh_token") || "").trim();
+}
+function compressImageFile(file){
+  return new Promise(function(resolve, reject){
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function(){
+      try {
+        var maxDim = 1200;
+        var w = img.naturalWidth, h = img.naturalHeight;
+        var scale = Math.min(1, maxDim / Math.max(w, h));
+        var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+        var canvas = document.createElement("canvas");
+        canvas.width = cw; canvas.height = ch;
+        canvas.getContext("2d").drawImage(img, 0, 0, cw, ch);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(function(blob){
+          if (blob) resolve(blob); else reject(new Error("compress"));
+        }, "image/jpeg", 0.82);
+      } catch (err){ reject(err); }
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("load")); };
+    img.src = url;
+  });
+}
+function blobToB64(blob){
+  return new Promise(function(resolve, reject){
+    var fr = new FileReader();
+    fr.onload = function(){
+      var s = String(fr.result || "");
+      resolve(s.substring(s.indexOf(",") + 1));
+    };
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
+  });
+}
+function uploadImageBlob(blob, productId, num){
+  var token = ghTokenValue();
+  var path = "product-images/" + productId + "/" + num + "-" + Date.now() + ".jpg";
+  return blobToB64(blob).then(function(b64){
+    return fetch("https://api.github.com/repos/" + REPO + "/contents/" + path, {
+      method: "PUT",
+      headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json", "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "صورة منتج " + productId, content: b64, branch: BRANCH })
+    }).then(function(r){
+      if (!r.ok) throw new Error("GitHub " + r.status);
+      return "https://promotiondizad.github.io/" + path;
+    });
+  });
+}
+$("btnPickImages").addEventListener("click", function(){
+  if (editImages.length >= MAX_IMAGES) return imgMsg("err", "وصلت للحد الأقصى: 6 صور للمنتج الواحد. احذف صورة أولاً إذا حبيت تبدّلها.");
+  $("fileImages").click();
+});
+$("fileImages").addEventListener("change", function(){
+  var files = Array.prototype.slice.call(this.files || []);
+  this.value = "";
+  if (!files.length) return;
+  if (!ghTokenValue()){
+    imgMsg("err", "اربط توكن GitHub في تبويب الإعدادات قبل تحميل الصور — بيانات النموذج لم تُفقد، ارجع بعد ربط التوكن وأعد اختيار الصور.");
+    return;
+  }
+  var room = MAX_IMAGES - editImages.length;
+  if (files.length > room){
+    imgMsg("info", "اخترت " + files.length + " صور وبقي مكان لـ" + room + " فقط — ستُرفع أول " + room + " منها (الحد الأقصى 6 صور للمنتج).");
+    files = files.slice(0, room);
+  }
+  var pid = currentProductId();
+  var chain = Promise.resolve();
+  var done = 0;
+  files.forEach(function(file){
+    chain = chain.then(function(){
+      imgMsg("info", "⏳ جارٍ ضغط ورفع الصور... (" + done + "/" + files.length + ")");
+      return compressImageFile(file)
+        .then(function(blob){ return uploadImageBlob(blob, pid, editImages.length + 1); })
+        .then(function(publicUrl){
+          editImages.push(publicUrl);
+          done++;
+          renderImgThumbs();
+        });
+    });
+  });
+  chain.then(function(){
+    imgMsg("ok", "✅ تم رفع " + done + " صورة. اضغط «حفظ» لحفظ المنتج ثم «نشر التعديلات» ليظهر في المتجر.");
+  }).catch(function(err){
+    renderImgThumbs();
+    imgMsg("err", "❌ توقف الرفع (" + (err && err.message ? err.message : "خطأ") + ") — رُفعت " + done + " من " + files.length + ". تحقق من التوكن (صلاحية Contents) والاتصال ثم أعد المحاولة.");
+  });
+});
+$("btnAddUrl").addEventListener("click", function(){
+  var u = $("fImageUrl").value.trim();
+  if (!u) return;
+  if (!/^https?:\/\//i.test(u)) return imgMsg("err", "الرابط لازم يبدأ بـ https://");
+  if (editImages.length >= MAX_IMAGES) return imgMsg("err", "وصلت للحد الأقصى: 6 صور للمنتج الواحد.");
+  if (editImages.indexOf(u) !== -1) return imgMsg("info", "هذا الرابط مضاف أصلاً.");
+  editImages.push(u);
+  $("fImageUrl").value = "";
+  renderImgThumbs();
+  imgMsg("ok", "تمت إضافة الرابط إلى صور المنتج. اضغط «حفظ» ثم «نشر».");
 });
 
 /* ---------- stats ---------- */
